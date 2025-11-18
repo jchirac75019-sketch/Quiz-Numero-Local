@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <!-- ============================================================================
+       META TAGS - Configuration du navigateur et du périphérique
+       ============================================================================ -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#2c5f2d" />
+  <meta name="description" content="Interactive Quranic verse quiz with audio, scoring, and Arabic support." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="لَّقَدۡ أَحۡصَىٰهُمۡ" />
+  
+  <!-- ============================================================================
+       MANIFEST ET ICONES - Intégration PWA (Progressive Web App)
+       ============================================================================ -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/images/icon-192.png" />
+  <link rel="apple-touch-icon" href="/images/icon-192.png" />
+  <link rel="icon" sizes="192x192" href="/images/icon-192.png" />
+  <link rel="icon" sizes="512x512" href="/images/icon-512.png" />
+  <meta name="msapplication-TileColor" content="#2c5f2d" />
+  <meta name="msapplication-navbutton-color" content="#2c5f2d" />
+  
+  <title>Quiz Versets Coran Avancé</title>
+  
+  <!-- ============================================================================
+       STYLES CSS - Design et mise en page de l'application
+       ============================================================================ -->
+  <style>
+    /* ─── RESET ET CONFIGURATION DE BASE ─── */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f9fafb; color: #333; }
+    body { 
+      display: flex; 
+      flex-direction: column; 
+      max-width: 100vw; 
+      min-width: 280px; 
+      font-size: 16px; 
+      overflow-x: hidden; 
+      -webkit-font-smoothing: antialiased; 
+      -moz-osx-font-smoothing: grayscale; 
+      -webkit-user-select: none; 
+      -webkit-touch-callout: none; 
+      -webkit-tap-highlight-color: transparent; 
+      overscroll-behavior: contain; 
+      background-attachment: fixed; 
+      padding-bottom: 130px; 
+      margin: 0; 
+    }
+
+    /* ─── CONTENEUR PRINCIPAL DE DÉFILEMENT ─── */
+    #main-scroll-container { 
+      display: flex; 
+      flex-direction: column; 
+      padding: 1em 4vw 1.5em; 
+    }
+
+    /* ─── TITRE PRINCIPAL ─── */
+    h1 { 
+      font-weight: 700; 
+      font-size: 1.4em; 
+      text-align: center; 
+      margin: 0; 
+      margin-bottom: 0.3em; 
+      color: #222; 
+      flex-shrink: 0; 
+      line-height: 1.2em; 
+      user-select: none; 
+    }
+
+    /* ─── CONTENEUR DES FILTRES ─── */
+    .filters-container { 
+      display: flex !important; 
+      flex-wrap: nowrap !important; 
+      justify-content: flex-start; 
+      gap: 1rem; 
+      margin-bottom: 0.1em; 
+      width: 800px; 
+      max-width: none;       /* max-width: none; */ 
+      margin-left: auto; 
+      margin-right: auto; 
+      align-items: center !important; 
+      background: #fff; 
+      padding: 12px 1.5vw; 
+      border-radius: 12px; 
+      box-shadow: 0 3px 15px rgb(0 0 0 / 0.08); 
+      user-select: none; 
+      overflow-x: auto; 
+      overflow-y: hidden; 
+      white-space: nowrap; 
+    }
+
+    /* ─── DIRECTION RTL (Arabic Right-to-Left) ─── */
+    .rtl { 
+      direction: rtl !important; 
+      text-align: right !important; 
+    }
+
+    /* ─── SÉLECTEURS (Langue, Sourate, Plage) ─── */
+    .selector-wrapper { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-width: 60px; 
+      flex-shrink: 1; 
+      padding: 0 4px; 
+      white-space: normal; 
+    }
+    .selector-wrapper#sourah-wrapper { 
+      max-width: 14vw; 
+      margin-left: 8px; 
+    }
+    .rtl .selector-wrapper#sourah-wrapper { 
+      margin-left: 0; 
+      margin-right: 8px; 
+    }
+    .selector-wrapper.non-arabic { 
+      min-width: 50px; 
+      max-width: 9vw; 
+    }
+    .selector-wrapper.non-arabic#sourah-wrapper { 
+      max-width: 8vw; 
+    }
+    .selector-wrapper.non-arabic .selector-label { 
+      font-size: 0.55em; 
+      white-space: nowrap; 
+    }
+    .selector-wrapper.non-arabic select { 
+      font-size: 0.75em !important; 
+      min-width: 42px; 
+      padding: 4px 6px; 
+    }
+
+    /* ─── LIBELLÉS DES SÉLECTEURS ─── */
+    .selector-label { 
+      font-weight: 700; 
+      color: #5a552a; 
+      margin-bottom: 4px; 
+      white-space: nowrap; 
+      user-select: none; 
+      text-align: center; 
+      background-color: #a89e6e; 
+      padding: 3px 8px; 
+      border-radius: 10px; 
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.12); 
+      line-height: 1.1em; 
+      letter-spacing: 0.03em; 
+      text-transform: uppercase; 
+    }
+
+    /* ─── CHAMPS DE SAISIE (SELECT et INPUT) ─── */
+    .language-select select, .sourah-select select, .range-wrap input[type='number'] { 
+      background-color: #f5f0dc; 
+      color: #5a552a; 
+      border: 2px solid #a89e6e; 
+      font-size: 0.95em; 
+      padding: 6px 8px; 
+      border-radius: 10px; 
+      min-width: 56px; 
+      max-width: 100%; 
+      cursor: pointer; 
+      box-shadow: inset 0 1px 5px rgb(0 0 0 / 0.07); 
+      flex-shrink: 1; 
+      transition: border-color 0.3s ease; 
+      font-weight: 600; 
+      text-align: center; 
+    }
+    .language-select select:hover, .sourah-select select:hover, .range-wrap input[type='number']:hover, 
+    .language-select select:focus, .sourah-select select:focus, .range-wrap input[type='number']:focus { 
+      border-color: #7a7039; 
+      outline: none; 
+    }
+
+    /* ─── CONTENEUR DE PLAGE (START - END) ─── */
+    .range-wrap { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 8px; 
+      max-width: 160px; 
+      background: #fff; 
+      border-radius: 14px; 
+      padding: 6px 12px; 
+      box-shadow: 0 4px 18px rgb(0 0 0 / 0.12); 
+      flex-shrink: 1; 
+      flex-direction: row; 
+      position: relative; 
+    }
+    .range-input-group { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-width: 65px; 
+      max-width: 85px; 
+      gap: 4px; 
+    }
+
+    /* ─── LIBELLÉS START ET END ─── */
+    #start-label, #end-label { 
+      background-color: #a89e6e; 
+      padding: 4px 8px; 
+      border-radius: 10px; 
+      color: #f5f0dc; 
+      font-weight: 700; 
+      cursor: default; 
+      font-size: 0.7em; 
+      box-shadow: 0 2px 12px rgb(0 0 0 / 0.18); 
+      user-select: none; 
+      white-space: nowrap; 
+      letter-spacing: 0.04em; 
+      text-transform: uppercase; 
+      width: 100%; 
+      text-align: center; 
+      line-height: 1.2em; 
+      height: 1.8em; 
+    }
+
+    /* ─── BOUTONS DE CONTRÔLE ─── */
+    .controls { 
+      display: flex !important; 
+      flex-wrap: nowrap !important; 
+      gap: 12px !important; 
+      justify-content: flex-start !important; 
+      margin-top: 0 !important; 
+      margin-bottom: 0.1em !important; 
+      width: auto !important; 
+      max-width: none !important; 
+      margin-left: 0.5em !important; 
+      margin-right: auto !important; 
+      flex-shrink: 0 !important; 
+      flex-grow: 0 !important; 
+      white-space: nowrap !important; 
+      min-width: fit-content !important; 
+      overflow: visible !important; 
+    }
+    .controls button { 
+      flex: 0 0 auto !important; 
+      min-width: 64px !important; 
+      max-width: none !important; 
+      padding: 6px 6px !important; 
+      font-size: 0.9em; 
+      border-radius: 14px; 
+      color: white; 
+      font-weight: 700; 
+      cursor: pointer; 
+      border: none; 
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.28); 
+      letter-spacing: 0.03em; 
+      transition: background-color 0.3s ease; 
+      white-space: nowrap !important; 
+      overflow: visible !important; 
+      text-overflow: clip !important; 
+      flex-shrink: 0 !important; 
+    }
+    .controls button:hover { 
+      filter: brightness(110%); 
+    }
+
+    /* ─── COULEURS DES BOUTONS DE CONTRÔLE ─── */
+    #btnRedistribuer { background-color: #4caf50; }
+    #btnTrier { background-color: #2196f3; }
+    #btnToggle { background-color: #ff9800; }
+    #btnFullScreen { background-color: #8e44ad; }
+    #btnFullScreen:hover { filter: brightness(110%); }
+
+    /* ─── BOUTON MASQUER/AFFICHER CHRONOMÈTRE ─── */
+    #btnShowHideTimer {
+      background-color: #795548;
+      margin-top: 8px;
+      max-width: none !important;
+      width: 100%;
+      padding: 2px 6px !important;
+      font-size: 0.9em;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.28);
+      cursor: pointer;
+      color: white;
+      font-weight: 700;
+      border: none;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background-color 0.3s ease;
+      flex-shrink: 0 !important;
+    }
+    #btnShowHideTimer:hover { filter: brightness(110%); }
+
+    /* ─── CONTENEUR DES NUMÉROS DE VERSETS ─── */
+    .table-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 152px;
+      max-width: 95vw;
+      overflow-y: auto;
+      border-radius: 14px;
+      border: 1.5px solid #ccc;
+      padding: 8px;
+      background: #fff;
+      user-select: none;
+      margin: 0 auto 10px;
+      box-shadow: 0 4px 18px rgb(0 0 0 / 0.07);
+      justify-content: center;
+      flex-shrink: 1;
+    }
+
+    /* ─── STYLE DE CHAQUE NUMÉRO DE VERSET ─── */
+    .num { 
+      border-radius: 12px; 
+      background: #d2f0d2; 
+      border: 1.5px solid #84b784; 
+      cursor: pointer; 
+      width: 36px; 
+      height: 36px; 
+      text-align: center; 
+      font-size: 1em; 
+      user-select: none; 
+      box-shadow: 0 2px 5px rgb(0 0 0 / 0.13); 
+      font-weight: 700; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      transition: background-color 0.2s ease, transform 0.15s ease; 
+    }
+    .num:hover { 
+      background-color: #b6deb7; 
+      transform: scale(1.07); 
+    }
+    .num.selected { 
+      background-color: #8bc34a; 
+      color: #fff; 
+      border-color: #558b2f; 
+      transform: scale(1.15); 
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.25); 
+    }
+    .num.traited.correct { 
+      background-color: #0b3d0b; 
+      color: #d8f5d8; 
+      cursor: default; 
+      border-color: #064206; 
+      text-decoration: line-through; 
+    }
+    .num.traited.incorrect { 
+      background-color: #8b1c1c; 
+      color: #f5d8d8; 
+      cursor: default; 
+      border-color: #5e1212; 
+      text-decoration: line-through; 
+    }
+
+    /* ─── BOÎTE D'AFFICHAGE DU VERSET ─── */
+    #ayat-box { 
+      max-width: 90vw; 
+      max-height: 55vh;  ← ✅ Hauteur du scroll pour le bloc des numéros de versets
+      margin: 0 auto 50px auto; 
+      background: #f5f5f5; 
+      border-radius: 16px; 
+      padding: 18px 20px; 
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.14); 
+      line-height: 1.05em; 
+      direction: rtl; 
+      text-align: right; 
+      overflow-y: auto; 
+      overflow-x: hidden; 
+      box-sizing: border-box; 
+      position: relative; 
+      z-index: 9999; 
+      user-select: text; 
+      display: none; 
+      flex-shrink: 1; 
+      scroll-behavior: smooth; 
+    }
+
+    /* ─── EN-TÊTE DU VERSET (Sourate et numéro) ─── */
+    #verse-header { 
+      font-weight: 700; 
+      font-size: 1.5em; 
+      background: #fff9c4; 
+      padding: 10px 16px; 
+      border-radius: 12px; 
+      margin-bottom: 14px; 
+      box-shadow: inset 0 1px 4px #d2ca5fbb; 
+      overflow-wrap: break-word; 
+    }
+    #verse-header .surah-number, #verse-header .ayah-number { 
+      color: blue; 
+    }
+
+    /* ─── TEXTE DU VERSET ─── */
+    #verse-text { 
+      font-size: 2.3em; 
+      line-height: 1.5em; 
+      margin-bottom: 16px; 
+      overflow-y: auto; 
+      word-break: break-word; 
+    }
+
+    /* ─── COLORATION DES SYMBOLES CORANIQUES ─── */
+    .special-red { color: red !important; font-weight: 700; }
+    .special-green { color: green !important; font-weight: 700; }
+    .special-yellow { color: orange !important; font-weight: 700; }
+    .special-blue { color: blue !important; font-weight: 700; }
+
+    /* ─── BOUTONS DE RÉPONSE (CORRECT/INCORRECT) ─── */
+    #response-buttons { 
+      display: flex; 
+      justify-content: center; 
+      gap: 24px; 
+      margin-top: 12px; 
+      user-select: none; 
+      flex-wrap: nowrap; 
+      max-width: 440px; 
+      margin-left: auto; 
+      margin-right: auto; 
+    }
+    #response-buttons button { 
+      cursor: pointer; 
+      flex: 1 1 48%; 
+      font-weight: 700; 
+      font-size: 0.88em; 
+      padding: 15px 12px; 
+      border: none; 
+      border-radius: 16px; 
+      color: white; 
+      background-color: #4caf50; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      gap: 10px; 
+      transition: background-color 0.2s ease; 
+      max-height: 34px; 
+      line-height: 1.1em; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+    }
+    #response-buttons button:hover { 
+      filter: brightness(110%); 
+    }
+    #btnIncorrect { background-color: #d32f2f !important; }
+    #btnCorrect::before { content: "✔"; color: #a5e6a5; font-weight: 700; }
+    #btnIncorrect::before { content: "✖"; color: #f5a8a8; font-weight: 700; }
+
+    /* ─── BOÎTES DE COMPTAGE (CORRECT/INCORRECT/RESTANT) ─── */
+    .counter-box { 
+      padding: 6px 14px; 
+      border-radius: 16px; 
+      font-weight: 700; 
+      text-align: center; 
+      color: white; 
+      margin: 2px; 
+      user-select: none; 
+      font-size: 0.82em; 
+      min-width: 84px; 
+      flex-shrink: 0; 
+      white-space: nowrap; 
+    }
+    .counter-correct { background-color: #0b3d0b; }
+    .counter-incorrect { background-color: #8b1c1c; }
+    .counter-remaining { background-color: #505050; }
+
+    /* ─── BARRE INFÉRIEURE FIXE (CHRONOMÈTRE ET COMPTEURS) ─── */
+    #fixed-bottom-bar { 
+      position: fixed; 
+      bottom: 0; 
+      left: 0; 
+      width: 100vw; 
+      background: linear-gradient(90deg, #d9e4b7, #a79d6e); 
+      border-top: 1.5px solid #8c8c7a; 
+      box-shadow: 0 -4px 10px rgb(0 0 0 / 0.15); 
+      display: flex; 
+      flex-wrap: wrap; 
+      justify-content: center; 
+      gap: 0px 2px; 
+      padding: 0px 2px; 
+      z-index: 99999; 
+      user-select: none; 
+      align-items: center; 
+      overflow-x: auto; 
+    }
+    #fixed-bottom-bar > .counters-row { 
+      display: flex; 
+      justify-content: center; 
+      width: 100%; 
+      gap: 6px; 
+      flex-wrap: nowrap; 
+    }
+
+    /* ─── CONTENEUR DU CHRONOMÈTRE ─── */
+    #fixed-bottom-bar > #timer-container { 
+      margin: 0 auto; 
+      flex-shrink: 0; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 4px; 
+      padding: 2px 4px; 
+      background-color: #8c8c7a; 
+      border-radius: 10px; 
+      box-shadow: 0 2px 10px rgb(0 0 0 / 0.25); 
+      color: #f5f5e1; 
+      font-weight: 700; 
+      font-size: 0.85em; 
+      text-align: center; 
+      user-select: none; 
+      position: relative; 
+      flex-wrap: nowrap; 
+      max-width: calc(100vw - 70px); 
+      box-sizing: border-box; 
+    }
+
+    /* ─── FLÈCHES DU CHRONOMÈTRE (GAUCHE/DROITE) ─── */
+    #timer-container > #arrow-left, #timer-container > #arrow-right { 
+      font-size: 2.2em; 
+      padding: 8px 18px; 
+      font-weight: 900; 
+      background-color: #7a722c; 
+      color: #f5f5e1; 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+      border-radius: 18px; 
+      user-select: none; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      transition: background-color 0.3s ease, transform 0.25s ease; 
+      flex-shrink: 0; 
+      margin-top: 6px; 
+    }
+    #timer-container > #arrow-left:hover, #timer-container > #arrow-right:hover { 
+      background-color: #8e872f; 
+      color: #f0f0d7; 
+      transform: scale(1.15); 
+    }
+
+    /* ─── FLÈCHES VERTICALES DU CHRONOMÈTRE (HAUT/BAS) ─── */
+    #timer-container > #arrow-up, #timer-container > #arrow-down { 
+      font-size: 1.3em; 
+      padding: 4px 8px; 
+      cursor: pointer; 
+      background-color: #a79d6e; 
+      border-radius: 10px; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.17); 
+      user-select: none; 
+      transition: background-color 0.3s ease, transform 0.2s ease; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      white-space: nowrap; 
+      margin-top: 4px; 
+    }
+    #timer-container > #arrow-up:hover, #timer-container > #arrow-down:hover { 
+      background-color: #bcbc9a; 
+      color: #2e2e1f; 
+      transform: scale(1.1); 
+    }
+
+    /* ─── CONTENU DU CHRONOMÈTRE ─── */
+    #timer-content { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 4px; 
+      user-select: none; 
+      width: 100%; 
+      text-align: center; 
+      flex-grow: 1; 
+      white-space: normal; 
+      margin: 0 8px; 
+    }
+
+    /* ─── RESPONSIVE DESIGN - Mobile (max 767px) ─── */
+    @media (max-width: 767px) { 
+      body { font-size: 14px; } 
+      #main-scroll-container { padding: 1em 3vw 1.2em; } 
+      .filters-container { max-width: 100% !important; } 
+      .selector-wrapper { max-width: 32vw; min-width: 70px; } 
+      .selector-wrapper.non-arabic { max-width: 28vw; } 
+      .selector-wrapper.non-arabic#sourah-wrapper { max-width: 25vw; } 
+      .range-wrap { max-width: 140px; } 
+      .controls { max-width: 100% !important; margin-left: 0.25em; flex-wrap: nowrap !important; } 
+      .controls button { min-width: 55px !important; font-size: 0.85em; padding: 5px 5px !important; flex-shrink: 0 !important; } 
+      #btnShowHideTimer { max-width: 100% !important; flex-shrink: 0 !important; } 
+      .table-wrap { max-height: 136px; max-width: 100vw; padding: 6px 6px; overflow-x: auto; } 
+      .num { width: 32px; height: 32px; font-size: 0.9em; } 
+      #response-buttons { max-width: 100%; } 
+      #response-buttons button { padding: 5px 8px; font-size: 0.8em; max-height: 34px; } 
+      .counter-box { min-width: 75px; padding: 6px 10px; font-size: 0.8em; } 
+      #fixed-bottom-bar { gap: 4px 6px; padding: 5px 6px; } 
+      #fixed-bottom-bar > .counters-row { gap: 6px; } 
+      #fixed-bottom-bar > #timer-container { max-width: calc(100vw - 70px); padding: 8px 12px; } 
+      #timer-content { flex-direction: column; white-space: normal; } 
+      #timer-start-label, #timer-elapsed-label, #timer-end-label { display: block; font-weight: 700; } 
+      #timer-content div { line-height: 1.3em; } 
+      #timer-container > #arrow-left, #timer-container > #arrow-right { font-size: 1.8em; padding: 6px 14px; } 
+      #timer-container > #arrow-up, #timer-container > #arrow-down { font-size: 1.1em; padding: 3px 6px; margin-top: 4px; border-radius: 8px; } 
+      #left-fake-arrow-container .fake-arrow-btn, #right-fake-arrow-container .fake-arrow-btn { font-size: 2em !important; padding: 12px 20px !important; border-radius: 24px !important; } 
+      #left-fake-arrow-container, #right-fake-arrow-container { margin: 0 4px !important; } 
+      #counters-buttons-group { gap: 4px !important; } 
+    }
+
+    /* ─── RESPONSIVE DESIGN - Tablette (1024px+) ─── */
+    @media (min-width: 1024px) { 
+      body { font-size: 17px; } 
+      #main-scroll-container { padding: 1.5em 6vw 1.5em; } 
+      .filters-container { max-width: 800px; } 
+      .selector-wrapper.non-arabic { max-width: 9vw; } 
+      .selector-wrapper.non-arabic#sourah-wrapper { max-width: 8vw; } 
+      .counter-box { font-size: 0.95em; min-width: 100px; } 
+      #fixed-bottom-bar { gap: 10px; padding: 6px 12px; } 
+      #fixed-bottom-bar > .counters-row { gap: 10px; } 
+      #timer-container { font-size: 1em; padding: 8px 20px; } 
+      #timer-container > #arrow-left, #timer-container > #arrow-right { font-size: 2.2em; padding: 8px 18px; } 
+      #timer-container > #arrow-up, #timer-container > #arrow-down { font-size: 1.3em; padding: 4px 8px; margin-top: 4px; border-radius: 10px; } 
+    }
+
+    /* ─── OPTIMISATION BARRE INFÉRIEURE ─── */
+    #fixed-bottom-bar { padding: 2px 4px !important; gap: 4px !important; align-items: center !important; }
+    #fixed-bottom-bar .counter-box { padding: 2px 6px !important; font-size: 0.8em !important; line-height: 1.1 !important; }
+    #fixed-bottom-bar #timer-container { padding: 2px 10px !important; font-size: 0.85em !important; line-height: 1.1 !important; align-self: center !important; }
+
+    /* ─── AFFICHAGE/MASQUAGE DU CHRONOMÈTRE ─── */
+    .hide-timer #timer-container { display: none !important; }
+    .hide-timer #fixed-bottom-bar { padding: 0 6px !important; gap: 12px !important; }
+
+    /* ─── FLÈCHES FICTIVES AU-DESSUS DU CHRONOMÈTRE ─── */
+    #left-fake-arrow-container .fake-arrow-btn, #right-fake-arrow-container .fake-arrow-btn {
+      display: flex !important;
+      width: auto !important;
+      height: auto !important;
+      font-size: 2em !important;
+      padding: 0px 16px !important;
+      background-color: #7a722c !important;
+      color: #f5f5e1 !important;
+      border-radius: 20px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+      cursor: pointer !important;
+      transition: transform 0.2s ease !important;
+      margin: 0 8px !important;
+      line-height: 1 !important;
+    }
+    #left-fake-arrow-container .fake-arrow-btn:hover, #right-fake-arrow-container .fake-arrow-btn:hover { 
+      transform: scale(1.2) !important; 
+    }
+    @media (max-width: 767px) { 
+      body.ios-device #left-fake-arrow-container .fake-arrow-btn, body.ios-device #right-fake-arrow-container .fake-arrow-btn { 
+        margin: 0 -2px !important; 
+      } 
+    }
+
+    /* ─── GROUPE DE COMPTEURS ─── */
+    #custom-counters-row { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 10px; 
+    }
+    #counters-buttons-group { 
+      display: flex; 
+      gap: 6px; 
+    }
+    #custom-counters-row .counter-box { 
+      font-size: 0.97em; 
+      min-width: 66px; 
+      padding: 6px 4px; 
+      border-radius: 14px; 
+      transition: min-width 0.2s, padding 0.2s; 
+    }
+  </style>
+</head>
+<body>
+  <!-- ============================================================================
+       CONTENEUR PRINCIPAL
+       ============================================================================ -->
+  <div id="main-scroll-container" tabindex="0">
+    <!-- Titre de l'application -->
+    <h1 id="app-title"></h1>
+    
+    <!-- ──────────────────────────────────────────────────────────────────────────
+         SECTION DES FILTRES ET CONTRÔLES
+         (Sélection Langue, Sourate, Plage de Versets, Boutons)
+         ────────────────────────────────────────────────────────────────────────── -->
+    <div class="filters-container" id="selectors" role="region" aria-label="">
+      
+      <!-- Sélecteur de Langue -->
+      <div class="selector-wrapper" id="language-wrapper">
+        <div class="selector-label" id="language-label" aria-live="polite" aria-atomic="true"></div>
+        <div class="language-select">
+          <select id="language" aria-labelledby="language-label" name="language" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <option value="ar" data-ar-label="العربية">العربية</option>
+            <option value="fr" data-ar-label="الفرنسية">Français</option>
+            <option value="en" data-ar-label="الإنجليزية">English</option>
+            <option value="es" data-ar-label="الإspagnole">Español</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Sélecteur de Sourate -->
+      <div class="selector-wrapper" id="sourah-wrapper">
+        <div class="selector-label" id="sourah-label" aria-live="polite" aria-atomic="true"></div>
+        <div class="sourah-select">
+          <select id="sourah" aria-labelledby="sourah-label" name="sourah" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></select>
+        </div>
+      </div>
+      
+      <!-- Sélecteur de Plage (Début et Fin) -->
+      <div class="selector-wrapper range-wrap" style="flex-direction: row; gap: 12px; max-width: auto; min-width: auto; align-items: center; justify-content: center;">
+        <div class="range-input-group">
+          <label class="selector-label" id="start-label" for="start" aria-live="polite" aria-atomic="true"></label>
+          <input type="number" id="start" min="1" aria-labelledby="start-label" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+        </div>
+        <div class="range-input-group">
+          <label class="selector-label" id="end-label" for="end" aria-live="polite" aria-atomic="true"></label>
+          <input type="number" id="end" min="1" aria-labelledby="end-label" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+        </div>
+      </div>
+      
+      <!-- Boutons de Contrôle -->
+      <div style="flex-direction: column; max-width: 290px; margin-left: 0.5em; margin-right: auto;">
+        <div class="controls">
+          <button id="btnRedistribuer" type="button"></button>
+          <button id="btnTrier" type="button"></button>
+          <button id="btnToggle" type="button"></button>
+          <button id="btnFullScreen" type="button">Plein écran</button>
+        </div>
+        <div class="controls" style="margin-top: 2px;">
+          <button id="btnShowHideTimer" type="button"></button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ──────────────────────────────────────────────────────────────────────────
+         CONTENEUR DES NUMÉROS DE VERSETS
+         (Liste cliquable des versets à réviser)
+         ────────────────────────────────────────────────────────────────────────── -->
+    <div class="table-wrap" id="ayahs-container" role="region" aria-label=""></div>
+    
+    <!-- ──────────────────────────────────────────────────────────────────────────
+         BOÎTE D'AFFICHAGE DU VERSET
+         (Affichage du verset complet avec en-tête et boutons de réponse)
+         ────────────────────────────────────────────────────────────────────────── -->
+    <div id="ayat-box" style="display:none;" role="region" aria-live="polite" aria-atomic="true" tabindex="0">
+      <div id="verse-header"></div>
+      <div id="verse-text"></div>
+      <div id="response-buttons" role="group" aria-label="">
+        <button id="btnCorrect" type="button"></button>
+        <button id="btnIncorrect" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================================
+       BARRE INFÉRIEURE FIXE
+       (Chronomètre avec flèches + Compteurs de scores)
+       ============================================================================ -->
+  <div id="fixed-bottom-bar" aria-live="polite" aria-atomic="true">
+    <!-- Groupe de Compteurs et Flèches -->
+    <div class="counters-row" id="custom-counters-row" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <!-- Conteneur Flèche Gauche (au-dessus du chronomètre) -->
+      <div id="left-fake-arrow-container"></div>
+      
+      <!-- Groupe de Compteurs (Correct, Incorrect, Restant) -->
+      <div id="counters-buttons-group" style="display: flex; gap: 6px;">
+        <div class="counter-box counter-correct" id="custom-correct" style="flex: 1; min-width: 66px;">
+          <span id="label-correct"></span> <span id="correct-count">0</span>
+        </div>
+        <div class="counter-box counter-incorrect" id="custom-incorrect" style="flex: 1; min-width: 66px;">
+          <span id="label-incorrect"></span> <span id="incorrect-count">0</span>
+        </div>
+        <div class="counter-box counter-remaining" id="custom-remaining" style="flex: none; min-width: 78px; text-align: center;">
+          <span id="label-remaining"></span> <span id="remaining-count">0</span> / <span id="total-count">0</span>
+        </div>
+      </div>
+      
+      <!-- Conteneur Flèche Droite (au-dessus du chronomètre) -->
+      <div id="right-fake-arrow-container"></div>
+    </div>
+    
+    <!-- Chronomètre avec Navigation -->
+    <div id="timer-container" aria-live="polite" aria-atomic="true" role="group" aria-label="Contrôles du chronomètre">
+      <!-- Flèche Gauche du Chronomètre -->
+      <div id="arrow-left" class="timer-arrow" role="button" aria-label="Verset précédent" tabindex="0">←</div>
+      
+      <!-- Flèche Vers le Haut -->
+      <div id="arrow-up" class="arrow-vertical" role="button" aria-label="Versets vers le haut" tabindex="0">↑</div>
+      
+      <!-- Contenu du Chronomètre (Heure de début, Temps écoulé, Heure de fin) -->
+      <div id="timer-content">
+        <div><strong id="timer-start-label"></strong> <span id="start-time-display">--:--:--</span></div>
+        <div><strong id="timer-elapsed-label"></strong> <span id="elapsed-time-display">00:00:00</span></div>
+        <div><strong id="timer-end-label"></strong> <span id="timer-end-time">--:--:--</span></div>
+      </div>
+      
+      <!-- Flèche Vers le Bas -->
+      <div id="arrow-down" class="arrow-vertical" role="button" aria-label="Versets vers le bas" tabindex="0">↓</div>
+      
+      <!-- Flèche Droite du Chronomètre -->
+      <div id="arrow-right" class="timer-arrow" role="button" aria-label="Verset suivant" tabindex="0">→</div>
+    </div>
+  </div>
+
+  <!-- Affichage de l'heure de fin (caché par défaut) -->
+  <div id="timer-end" style="display:none; flex:none; min-width:280px; margin:0 auto 0 auto;">
+    <span></span><span id="end-time-display"></span>
+  </div>
+
+  <!-- ============================================================================
+       CHARGEMENT DU SCRIPT PRINCIPAL
+       (Tout le code logique pour le fonctionnement de l'app)
+       ============================================================================ -->
+  <script src="quran-script.js"></script>
+</body>
+</html>
